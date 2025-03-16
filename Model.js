@@ -166,6 +166,13 @@ class InventarioModel {
     
     /**
      * Obtiene datos para el dashboard
+     * 
+     * @returns {Object} Datos del dashboard
+     * @returns {number} return.totalProductos - Total de productos en el inventario
+     * @returns {number} return.bajoStock - Número de productos con bajo stock (menos de 10 unidades)
+     * @returns {number} return.totalVentasMes - Total de ventas del mes actual
+     * @returns {Array} return.topProductos - Lista de los 5 productos más vendidos
+     * @returns {string} return.ultimaVenta - Fecha de la última venta
      */
     getDashboardData() {
       const productos = this.getProductos();
