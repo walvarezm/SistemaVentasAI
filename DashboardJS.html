@@ -1,0 +1,75 @@
+<script>
+    // Inicializa la página de dashboard
+    function initDashboard() {
+      // Cargar datos del dashboard
+      loadDashboardData();
+      
+      // Configurar evento de actualización
+      $('#refreshDashboard').click(function() {
+        loadDashboardData();
+      });
+      
+      // Configurar eventos para acciones rápidas
+      $('.card-body a[data-page]').click(function(e) {
+        e.preventDefault();
+        const page = $(this).data('page');
+        navigateTo(page);
+      });
+    }
+    
+    // Carga los datos del dashboard
+    function loadDashboardData() {
+      showLoading();
+      
+      google.script.run
+        .withSuccessHandler(function(data) {
+            console.log(data);
+          // Actualizar estadísticas
+          $('#totalProductos').text(data.totalProductos);
+          $('#bajoStock').text(data.bajoStock);
+          $('#ventasMes').text(formatCurrency(data.totalVentasMes));
+          $('#ultimaVenta').text(data.ultimaVenta);
+          
+          // Cargar productos más vendidos
+          let topProductosHtml = '';
+          if (data.topProductos.length === 0) {
+            topProductosHtml = '<tr><td colspan="3" class="text-center">No hay datos disponibles</td></tr>';
+          } else {
+            data.topProductos.forEach(function(producto) {
+              topProductosHtml += `
+                <tr>
+                  <td>${producto.codigo}</td>
+                  <td>${producto.nombre}</td>
+                  <td class="text-end">${producto.cantidad}</td>
+                </tr>
+              `;
+            });
+          }
+          $('#topProductos').html(topProductosHtml);
+          
+          // Cargar última venta
+          /*google.script.run
+            .withSuccessHandler(function(ventas) {
+              if (ventas.length > 0) {
+                $('#ultimaVenta').text(formatDate(ventas[0].fecha));
+              } else {
+                $('#ultimaVenta').text('Sin ventas');
+              }
+              hideLoading();
+            })
+            .withFailureHandler(function(error) {
+              console.error('Error al cargar ventas:', error);
+              $('#ultimaVenta').text('Error');
+              hideLoading();
+            })
+            .getVentasWeb();*/
+        })
+        .withFailureHandler(function(error) {
+          console.error('Error al cargar datos del dashboard:', error);
+          alert('Error al cargar datos del dashboard: ' + error);
+          hideLoading();
+        })
+        .getDashboardDataWeb();
+    }
+  </script>
+  

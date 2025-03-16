@@ -1,0 +1,238 @@
+<script>
+    // Inicializa la página de nueva venta
+    function initNuevaVenta() {
+      // Vaciar carrito
+      carritoItems = [];
+      updateCarrito();
+      
+      // Cargar productos
+      loadVentaProductos();
+      
+      // Configurar evento para búsqueda
+      $('#btnSearchVenta').click(function() {
+        searchVentaProductos();
+      });
+      
+      $('#searchVentaProducto').keypress(function(e) {
+        if (e.which === 13) {
+          searchVentaProductos();
+        }
+      });
+      
+      // Configurar evento para finalizar venta
+      $('#finalizarVenta').click(function() {
+        if (!$('#ventaForm')[0].checkValidity()) {
+          $('#ventaForm')[0].reportValidity();
+          return;
+        }
+        
+        realizarVenta();
+      });
+    }
+    
+    // Carga los productos para venta
+    function loadVentaProductos() {
+      showLoading();
+      
+      google.script.run
+        .withSuccessHandler(function(productos) {
+          productosCache = productos;
+          renderVentaProductosTable(productos);
+          hideLoading();
+        })
+        .withFailureHandler(function(error) {
+          console.error('Error al cargar productos:', error);
+          alert('Error al cargar productos: ' + error);
+          hideLoading();
+        })
+        .getProductosWeb();
+    }
+    
+    // Renderiza la tabla de productos para venta
+    function renderVentaProductosTable(productos) {
+      let html = '';
+      
+      if (productos.length === 0) {
+        html = '<tr><td colspan="5" class="text-center">No se encontraron productos</td></tr>';
+      } else {
+        productos.forEach(function(producto) {
+          const stockClass = producto.stock < 1 ? 'text-danger fw-bold' : '';
+          const disabledBtn = producto.stock < 1 ? 'disabled' : '';
+          
+          html += `
+            <tr>
+              <td>${producto.codigo}</td>
+              <td>${producto.categoria}</td>
+              <td>${producto.nombre}</td>
+              <td>${formatCurrency(producto.precio)}</td>
+              <td class="${stockClass}">${producto.stock}</td>
+              <td>
+                <button class="btn btn-sm btn-primary" onclick="agregarAlCarrito('${producto.codigo}')" ${disabledBtn}>
+                  <i class="fas fa-plus"></i>
+                </button>
+              </td>
+            </tr>
+          `;
+        });
+      }
+      
+      $('#ventaProductosTable').html(html);
+    }
+    
+    // Busca productos para venta
+    function searchVentaProductos() {
+      const query = $('#searchVentaProducto').val().trim();
+      
+      if (query === '') {
+        renderVentaProductosTable(productosCache);
+        return;
+      }
+      
+      showLoading();
+      
+      google.script.run
+        .withSuccessHandler(function(productos) {
+          renderVentaProductosTable(productos);
+          hideLoading();
+        })
+        .withFailureHandler(function(error) {
+          console.error('Error al buscar productos:', error);
+          alert('Error al buscar productos: ' + error);
+          hideLoading();
+        })
+        .buscarProductosWeb(query);
+    }
+    
+    // Agrega un producto al carrito
+    function agregarAlCarrito(codigo) {
+      const producto = productosCache.find(p => p.codigo === codigo);
+      if (!producto) return;
+      
+      // Verificar si ya está en el carrito
+      const existeIndex = carritoItems.findIndex(item => item.codigo === codigo);
+      
+      if (existeIndex >= 0) {
+        // Verificar stock disponible
+        if (carritoItems[existeIndex].cantidad < producto.stock) {
+          carritoItems[existeIndex].cantidad++;
+        } else {
+          alert('No hay suficiente stock disponible.');
+          return;
+        }
+      } else {
+        // Agregar nuevo item
+        carritoItems.push({
+          codigo: producto.codigo,
+          nombre: producto.nombre,
+          precio: producto.precio,
+          cantidad: 1,
+          stock: producto.stock
+        });
+      }
+      
+      updateCarrito();
+    }
+    
+    // Elimina un producto del carrito
+    function eliminarDelCarrito(index) {
+      carritoItems.splice(index, 1);
+      updateCarrito();
+    }
+    
+    // Actualiza la cantidad de un producto en el carrito
+    function actualizarCantidad(index, cantidad) {
+      const item = carritoItems[index];
+      
+      // Validar cantidad
+      if (cantidad < 1) cantidad = 1;
+      if (cantidad > item.stock) cantidad = item.stock;
+      
+      item.cantidad = cantidad;
+      updateCarrito();
+    }
+    
+    // Actualiza la visualización del carrito
+    function updateCarrito() {
+      let html = '';
+      let total = 0;
+      
+      if (carritoItems.length === 0) {
+        html = '<p class="text-center text-muted">No hay productos en el carrito</p>';
+        $('#finalizarVenta').prop('disabled', true);
+      } else {
+        html = '<div class="list-group">';
+        
+        carritoItems.forEach(function(item, index) {
+          const subtotal = item.precio * item.cantidad;
+          total += subtotal;
+          
+          html += `
+            <div class="list-group-item">
+              <div class="d-flex justify-content-between">
+                <h6 class="mb-1">${item.nombre}</h6>
+                <small>
+                  <a href="#" onclick="eliminarDelCarrito(${index}); return false;" class="text-danger">
+                    <i class="fas fa-times"></i>
+                  </a>
+                </small>
+              </div>
+              <div class="d-flex justify-content-between align-items-center">
+                <div class="input-group input-group-sm" style="width: 120px;">
+                  <button class="btn btn-outline-secondary" type="button" 
+                    onclick="actualizarCantidad(${index}, ${item.cantidad - 1})">-</button>
+                  <input type="number" class="form-control text-center" value="${item.cantidad}" min="1" max="${item.stock}"
+                    onchange="actualizarCantidad(${index}, parseInt(this.value) || 1)">
+                  <button class="btn btn-outline-secondary" type="button" 
+                    onclick="actualizarCantidad(${index}, ${item.cantidad + 1})">+</button>
+                </div>
+                <div>
+                  <small class="text-muted">${formatCurrency(item.precio)} x ${item.cantidad}</small>
+                  <div>${formatCurrency(subtotal)}</div>
+                </div>
+              </div>
+            </div>
+          `;
+        });
+        
+        html += '</div>';
+        $('#finalizarVenta').prop('disabled', false);
+      }
+      
+      $('#carritoItems').html(html);
+      $('#totalVenta').text(formatCurrency(total));
+    }
+    
+    // Realiza la venta
+    function realizarVenta() {
+      if (carritoItems.length === 0) {
+        alert('No hay productos en el carrito.');
+        return;
+      }
+      
+      showLoading();
+      
+      // Preparar datos de venta
+      const venta = {
+        cliente: $('#clienteNombre').val(),
+        metodoPago: $('#metodoPago').val(),
+        items: carritoItems,
+        total: parseFloat($('#totalVenta').text().replace(/[^\d.-]/g, ''))
+      };
+
+      google.script.run
+       .withSuccessHandler(function() {
+          alert('Venta realizada con éxito.');
+          carritoItems = [];
+          updateCarrito();
+          //searchVentaProductos();
+          loadVentaProductos();
+          hideLoading();
+        })
+       .withFailureHandler(function(error) {
+          console.error('Error al realizar la venta:', error);
+          alert('Error al realizar la venta:'+ error);
+          hideLoading();
+        })
+      .registrarVentaWeb(venta);
+    }
+</script>

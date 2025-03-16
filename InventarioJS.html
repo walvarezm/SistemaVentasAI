@@ -1,0 +1,256 @@
+<script>
+    // Inicializa la página de inventario
+    function initInventario() {
+      // Cargar productos
+      loadProductos();
+      
+      // Configurar evento para nuevo producto
+      $('#nuevoProducto').click(function() {
+        resetProductoForm();
+        $('#productoModalTitle').text('Agregar Producto');
+        $('#modo').val('nuevo');
+        $('#codigo').prop('readonly', false);
+        $('#guardarProducto').text('Guardar');
+        
+        const productoModal = new bootstrap.Modal(document.getElementById('productoModal'));
+        productoModal.show();
+      });
+      
+      // Configurar evento para guardar producto
+      $('#guardarProducto').click(function() {
+        saveProducto();
+      });
+      
+      // Configurar evento para eliminar producto
+      $('#confirmarEliminar').click(function() {
+        const codigo = $('#eliminarCodigo').val();
+        eliminarProducto(codigo);
+      });
+      
+      // Configurar evento para búsqueda
+      $('#btnSearch').click(function() {
+        searchProductos();
+      });
+      
+      $('#searchProducto').keypress(function(e) {
+        if (e.which === 13) {
+          searchProductos();
+        }
+      });
+    }
+    
+    // Carga todos los productos
+    function loadProductos() {
+      showLoading();
+      
+      google.script.run
+        .withSuccessHandler(function(productos) {
+          productosCache = productos;
+          renderProductosTable(productos);
+          hideLoading();
+        })
+        .withFailureHandler(function(error) {
+          console.error('Error al cargar productos:', error);
+          alert('Error al cargar productos: ' + error);
+          hideLoading();
+        })
+        .getProductosWeb();
+    }
+    
+    // Renderiza la tabla de productos
+    function renderProductosTable(productos) {
+      let html = '';
+      
+      if (productos.length === 0) {
+        html = '<tr><td colspan="7" class="text-center">No se encontraron productos</td></tr>';
+      } else {
+        productos.forEach(function(producto) {
+          const stockClass = producto.stock < 10 ? 'text-danger fw-bold' : '';
+          
+          html += `
+            <tr>
+              <td>${producto.codigo}</td>
+              <td>${producto.nombre}</td>
+              <td>${producto.categoria}</td>
+              <td class="text-end">${formatCurrency(producto.precio)}</td>
+              <td class="text-end ${stockClass}">${producto.stock}</td>
+              <td>${producto.proveedor || '-'}</td>
+              <td>
+                <button class="btn btn-sm btn-primary me-1" onclick="editarProducto('${producto.codigo}')">
+                  <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn btn-sm btn-danger" onclick="confirmarEliminar('${producto.codigo}')">
+                  <i class="fas fa-trash"></i>
+                </button>
+              </td>
+            </tr>
+          `;
+        });
+      }
+      
+      $('#productosTable').html(html);
+    }
+    
+    // Edita un producto
+    function editarProducto(codigo) {
+      const producto = productosCache.find(p => p.codigo === codigo);
+      if (!producto) return;
+      
+      // Llenar formulario
+      $('#codigo').val(producto.codigo);
+      $('#nombre').val(producto.nombre);
+      $('#descripcion').val(producto.descripcion);
+      $('#categoria').val(producto.categoria);
+      $('#precio').val(producto.precio);
+      $('#stock').val(producto.stock);
+      $('#proveedor').val(producto.proveedor);
+      
+      // Configurar modal
+      $('#productoModalTitle').text('Editar Producto');
+      $('#modo').val('editar');
+      $('#codigo').prop('readonly', true);
+      $('#guardarProducto').text('Actualizar');
+      
+      // Mostrar modal
+      const productoModal = new bootstrap.Modal(document.getElementById('productoModal'));
+      productoModal.show();
+    }
+    
+    // Confirma eliminación de producto
+    function confirmarEliminar(codigo) {
+      $('#eliminarCodigo').val(codigo);
+      const eliminarModal = new bootstrap.Modal(document.getElementById('eliminarModal'));
+      eliminarModal.show();
+    }
+    
+    // Elimina un producto
+    function eliminarProducto(codigo) {
+      showLoading();
+      
+      google.script.run
+        .withSuccessHandler(function(success) {
+          if (success) {
+            // Cerrar modal
+            const eliminarModal = document.getElementById('eliminarModal');
+            bootstrap.Modal.getInstance(eliminarModal).hide();
+            
+            // Recargar productos
+            loadProductos();
+          } else {
+            alert('No se pudo eliminar el producto.');
+            hideLoading();
+          }
+        })
+        .withFailureHandler(function(error) {
+          console.error('Error al eliminar producto:', error);
+          alert('Error al eliminar producto: ' + error);
+          hideLoading();
+        })
+        .eliminarProductoWeb(codigo);
+    }
+    
+    // Guarda un producto (nuevo o actualizado)
+    function saveProducto() {
+      // Validar formulario
+      if (!$('#productoForm')[0].checkValidity()) {
+        $('#productoForm')[0].reportValidity();
+        return;
+      }
+      
+      // Recopilar datos
+      const producto = {
+        codigo: $('#codigo').val(),
+        nombre: $('#nombre').val(),
+        descripcion: $('#descripcion').val(),
+        categoria: $('#categoria').val(),
+        precio: parseFloat($('#precio').val()),
+        stock: parseInt($('#stock').val()),
+        proveedor: $('#proveedor').val()
+      };
+      
+      showLoading();
+      
+      // Determinar si es nuevo o edición
+      const modo = $('#modo').val();
+      if (modo === 'nuevo') {
+        google.script.run
+          .withSuccessHandler(function(success) {
+            if (success) {
+              // Cerrar modal
+              const productoModal = document.getElementById('productoModal');
+              bootstrap.Modal.getInstance(productoModal).hide();
+              
+              // Recargar productos
+              loadProductos();
+              
+              // Limpiar formulario
+              resetProductoForm();
+            } else {
+              alert('No se pudo guardar el producto.');
+              hideLoading();
+            }
+          })
+          .withFailureHandler(function(error) {
+            console.error('Error al guardar producto:', error);
+            alert('Error al guardar producto: ' + error);
+            hideLoading();
+          })
+          .agregarProductoWeb(producto);
+      } else {
+        google.script.run
+          .withSuccessHandler(function(success) {
+            if (success) {
+              // Cerrar modal
+              const productoModal = document.getElementById('productoModal');
+              bootstrap.Modal.getInstance(productoModal).hide();
+              
+              // Recargar productos
+              loadProductos();
+              
+              // Limpiar formulario
+              resetProductoForm();
+            } else {
+              alert('No se pudo actualizar el producto.');
+              hideLoading();
+            }
+          })
+          .withFailureHandler(function(error) {
+            console.error('Error al actualizar producto:', error);
+            alert('Error al actualizar producto: ' + error);
+            hideLoading();
+          })
+          .actualizarProductoWeb(producto.codigo, producto);
+      }
+    }
+    
+    // Busca productos
+    function searchProductos() {
+      const query = $('#searchProducto').val().trim();
+      
+      if (query === '') {
+        renderProductosTable(productosCache);
+        return;
+      }
+      
+      showLoading();
+      
+      google.script.run
+        .withSuccessHandler(function(productos) {
+          renderProductosTable(productos);
+          hideLoading();
+        })
+        .withFailureHandler(function(error) {
+          console.error('Error al buscar productos:', error);
+          alert('Error al buscar productos: ' + error);
+          hideLoading();
+        })
+        .buscarProductosWeb(query);
+    }
+    
+    // Resetea el formulario de producto
+    function resetProductoForm() {
+      $('#productoForm')[0].reset();
+      $('#modo').val('nuevo');
+    }
+  </script>
+  

@@ -1,0 +1,128 @@
+<script>
+    // Inicializa la página de ventas
+    function initVentas() {
+      // Cargar ventas
+      loadVentas();
+      
+      // Configurar evento para nueva venta
+      $('button[data-page="nuevaVenta"]').click(function() {
+        navigateTo('nuevaVenta');
+      });
+      
+      // Configurar evento para imprimir venta
+      $('#imprimirVenta').click(function() {
+        imprimirVenta();
+      });
+    }
+    
+    // Carga todas las ventas
+    function loadVentas() {
+      showLoading();
+      
+      google.script.run
+        .withSuccessHandler(function(ventas) {
+            console.log('Ventas cargadas:', ventas);
+          renderVentasTable(ventas);
+          hideLoading();
+        })
+        .withFailureHandler(function(error) {
+          console.error('Error al cargar ventas:', error);
+          alert('Error al cargar ventas: ' + error);
+          hideLoading();
+        })
+        .getVentasWeb();
+    }
+    
+    // Renderiza la tabla de ventas
+    function renderVentasTable(ventas) {
+      let html = '';
+      
+      if (ventas.length === 0) {
+        html = '<tr><td colspan="6" class="text-center">No se encontraron ventas</td></tr>';
+      } else {
+        // Ordenar por fecha (más reciente primero)
+        ventas.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+        
+        ventas.forEach(function(venta) {
+          html += `
+            <tr>
+              <td>${venta.numeroVenta}</td>
+              <td>${formatDate(venta.fecha)}</td>
+              <td>${venta.cliente}</td>
+              <td>${venta.metodoPago}</td>
+              <td class="text-end">${formatCurrency(venta.total)}</td>
+              <td>
+                <button class="btn btn-sm btn-info text-white" onclick="verDetalleVenta(${JSON.stringify(venta).replace(/"/g, '&quot;')})">
+                  <i class="fas fa-eye"></i>
+                </button>
+              </td>
+            </tr>
+          `;
+        });
+      }
+      
+      $('#ventasTable').html(html);
+    }
+    
+    // Muestra el detalle de una venta
+    function verDetalleVenta(venta) {
+      // Llenar datos del modal
+      $('#detalle-numero').text(venta.numeroVenta);
+      $('#detalle-fecha').text(formatDate(venta.fecha));
+      $('#detalle-cliente').text(venta.cliente);
+      $('#detalle-pago').text(venta.metodoPago);
+      $('#detalle-total').text(formatCurrency(venta.total));
+      
+      // Llenar items
+      let itemsHtml = '';
+      venta.items.forEach(function(item) {
+        const subtotal = item.precio * item.cantidad;
+        itemsHtml += `
+          <tr>
+            <td>${item.codigo}</td>
+            <td>${item.nombre}</td>
+            <td class="text-end">${item.cantidad}</td>
+            <td class="text-end">${formatCurrency(item.precio)}</td>
+            <td class="text-end">${formatCurrency(subtotal)}</td>
+          </tr>
+        `;
+      });
+      $('#detalle-items').html(itemsHtml);
+      
+      // Mostrar modal
+      const detalleModal = new bootstrap.Modal(document.getElementById('detalleVentaModal'));
+      detalleModal.show();
+    }
+    
+    // Imprime una venta
+    function imprimirVenta() {
+      const contenido = document.getElementById('detalleVentaModal').querySelector('.modal-body').innerHTML;
+      const ventanaImpresion = window.open('', '_blank');
+      
+      ventanaImpresion.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Comprobante de Venta</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            th, td { border: 1px solid #ddd; padding: 8px; }
+            th { background-color: #f2f2f2; }
+            .text-end { text-align: right; }
+            .text-center { text-align: center; }
+            h1 { text-align: center; }
+          </style>
+        </head>
+        <body>
+          <h1>Comprobante de Venta</h1>
+          ${contenido}
+        </body>
+        </html>
+      `);
+      
+      ventanaImpresion.document.close();
+      ventanaImpresion.print();
+    }
+  </script>
+  
