@@ -224,7 +224,13 @@ class InventarioModel {
       return new Intl.DateTimeFormat('es-MX').format(date);
     }
 
-    // Function to validate user login
+    /**
+     * Function to validate user login
+     * 
+     * @param {username} username 
+     * @param {password} password 
+     * @returns return object with success and userData
+     */
     validarLogin(username, password) {
       try {
         const usersSheet = this.ss.getSheetByName('Usuarios'); // Make sure this sheet exists
