@@ -7,17 +7,20 @@
 function doGet(e) {
 
     const action = e.parameter.action || 'login';
+    console.log('action: ', action);
 
     if(action === 'noLogueado' || action === 'login' || action === 'logout'){
       const template = HtmlService.createTemplateFromFile('login');
+      template.mensajeRespuesta = 'Por favor inicie sesión';
       return template.evaluate()
-       .setTitle('Sistema de Ventas e Inventario - Login - doGet')
+       .setTitle('Sistema de Ventas e Inventario - Loginnn - doGet')
        .addMetaTag('viewport', 'width=device-width, initial-scale=1')
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-    }else if(action === 'logueado'){
+       //.setSandboxMode(HtmlService.SandboxMode.IFRAME)
+       //.setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+    }else{ // if(action === 'logueado'){
       const template = HtmlService.createTemplateFromFile('Index');
       return template.evaluate()
-      .setTitle('Sistema de Ventas e Inventario - Ferretería')
+      .setTitle('Sistema de Ventas e Inventario - Ferretería - doGet')
       .addMetaTag('viewport', 'width=device-width, initial-scale=1')
       .setSandboxMode(HtmlService.SandboxMode.IFRAME)
      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
@@ -25,19 +28,20 @@ function doGet(e) {
   }
   
 function doPost(e) {
-    const action = e.parameter.action;
-
+    const action = e.parameter.action || 'Logout';
+    console.log('action: ', action, e.parameter);
     switch (action) {
 
-      case 'validarLogin':
+      case 'Login':
         let usuario = e.parameter.username; 
         let pass = e.parameter.password; 
         //return ContentService.createTextOutput(JSON.stringify(validarLoginWeb(usuario,pass)));
         let response = validarLoginWeb(usuario,pass);
         if (response.success) {
           const template = HtmlService.createTemplateFromFile('Index');
+          template.userData = JSON.stringify(response.userData);
           return template.evaluate()
-            .setTitle('Sistema de Ventas e Inventario - Ferretería')
+            .setTitle('Sistema de Ventas e Inventario - Ferretería - doPost')
             .addMetaTag('viewport', 'width=device-width, initial-scale=1')
             .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 
@@ -47,16 +51,29 @@ function doPost(e) {
           //return ContentService.createTextOutput(JSON.stringify({ error: 'Credenciales incorrectas' }));
 
           const template = HtmlService.createTemplateFromFile('login');
+          template.mensajeRespuesta = response.error;
           return template.evaluate()
-          .setTitle('Sistema de Ventas e Inventario - Login - doPost')
-          .addMetaTag('viewport', 'width=device-width, initial-scale=1')
-          .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+            .setTitle('Sistema de Ventas e Inventario - Login - doPost')
+            .addMetaTag('viewport', 'width=device-width, initial-scale=1')
+            .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 
         }
-      case 'getUrlApp':
-        return ContentService.createTextOutput(JSON.stringify(getUrlAppWeb()));
+      case 'Logout':
       default:
-        return ContentService.createTextOutput(JSON.stringify({ error: 'Acción no válida' }));
+
+        let responseLogout = logoutWeb();
+        return responseLogout
+        /*if (responseLogout.success) {
+          const template = HtmlService.createTemplateFromFile('login');
+          template.mensajeRespuesta = responseLogout.message || "Inicie sesión para continuar";
+          return template.evaluate()
+              .setTitle('Sistema de Ventas e Inventario - Logout - doPost')
+              .addMetaTag('viewport', 'width=device-width, initial-scale=1')
+              .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+        } */
+
+      //default:
+      //  return ContentService.createTextOutput(JSON.stringify({ error: 'Acción no válida' }));
     }
   }
 
@@ -138,6 +155,26 @@ function doPost(e) {
   function validarLoginWeb(username, password) {
     const controller = new InventarioController();
     return controller.validarLogin(username, password);
+  }
+
+  /**
+   * Valida el login
+   */
+  function logoutWeb() {
+    const controller = new InventarioController();
+    //return controller.logout();
+
+    let responseLogout = controller.logout();
+    if (responseLogout.success) {
+      const template = HtmlService.createTemplateFromFile('login');
+      template.mensajeRespuesta = responseLogout.message || "Inicie sesión para continuar";
+      return template.evaluate()
+          .setTitle('Sistema de Ventas e Inventario - Logout - logoutWeb')
+          .addMetaTag('viewport', 'width=device-width, initial-scale=1')
+          .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+    }
+
+
   }
   
   /**

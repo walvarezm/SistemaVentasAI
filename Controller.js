@@ -75,5 +75,9 @@ class InventarioController {
     validarLogin(username, password) {
       return this.model.validarLogin(username, password);
     }
+
+    logout() {
+      return this.model.logout();
+    }
 }
   

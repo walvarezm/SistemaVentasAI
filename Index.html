@@ -81,7 +81,7 @@
 <body>
 
   <? var urlAppWeb = getUrlAppWeb(); ?>
-    <a style="display:none" id="myid-logout" href="<?= urlAppWeb ?>?action=login" target="_top">Link</a>
+    <a style="display:none" id="myid-logout" href="<?= urlAppWeb ?>" target="_top">Link</a>
     
   <!-- Loader -->
   <div id="loading" class="loading d-none">
@@ -180,6 +180,9 @@
     
     // Initialize the application
     $(document).ready(function() {
+
+      console.log('ingreso a document.ready()');
+
       // Navigation event handlers
       $('.nav-link').click(function(e) {
         e.preventDefault();
@@ -199,6 +202,13 @@
     });
 
     document.addEventListener('DOMContentLoaded', function () {
+
+      console.log('ingreso a DOMContentLoaded()');
+
+      console.log(<?= userData ?>);
+
+      sessionStorage.setItem('userData', <?= userData ?>);
+
       // Initialize the app
       //showLoading();
       //google.script.run.withSuccessHandler(handleLoginResponse).verificarCredenciales();
@@ -208,6 +218,8 @@
     function verificarCredenciales() {
       //showLoading();
       //google.script.run.withSuccessHandler(handleLoginResponse).verificarCredenciales();
+
+      console.log('ingreso a verificarCredenciales()');
 
       // Check if user is logged in
       const userData = sessionStorage.getItem('userData');
@@ -239,19 +251,26 @@
 
     // Logout function
     function logout() {
-      //showLoading();
-      //google.script.run.withSuccessHandler(handleLogoutResponse).logout();
+      showLoading();
+      google.script.run.withSuccessHandler(handleLogoutResponse).logoutWeb();
 
-      sessionStorage.removeItem('userData');
+      //sessionStorage.removeItem('userData');
       //window.location.href = 'login.html';
-      document.getElementById('myid-logout').click();
+      //document.getElementById('myid-logout').click();
+
+      return true
     }
 
     function handleLogoutResponse(response) {
       hideLoading();
-      if (response.success) {
-        $('#userInfo').text('Usuario');
-        navigateTo('login');
+      //if (response.success) {
+      if (true) {
+
+        sessionStorage.removeItem('userData');
+        document.getElementById('myid-logout').click();
+
+        //$('#userInfo').text('Usuario');
+        //navigateTo('login');
       } else {
         alert('Error al cerrar sesión.');
       }

@@ -272,5 +272,15 @@ class InventarioModel {
       }
     }
 
+    /**
+     * Function to logout user
+     */
+    logout() {
+      return {
+        success: true,
+        message: 'Sesión cerrada'
+      };
+
 
   }
+}
